@@ -1,7 +1,7 @@
 #include "WiFi.h"
 #include "HTTPClient.h"
-#include <detaBaseArduinoESP32.h>
-#include <WiFiClientSecure.h>
+//#include <detaBaseArduinoESP32.h>
+//#include <WiFiClientSecure.h>
 #include <Wire.h>
 #include <PN532_I2C.h>
 #include <PN532.h>
@@ -208,7 +208,7 @@ void altavozStartup(){
 void setup() {
     Serial.begin(115200);
     Serial.print("Initialization begin");
-    altavozStartup();
+    //altavozStartup();
 
     Serial.println();
     //Inicialización wifi
@@ -221,6 +221,7 @@ void setup() {
 }
 
 void loop() {
+
     if(WiFi.status() == WL_CONNECTED)
     {
       if (detectedTarget == false){
@@ -242,7 +243,7 @@ void loop() {
         contador = contador + 1;
         estadoAnterior = !estadoAnterior;
         Serial.print(contador);
-        altavoz.play(1);
+        //altavoz.play(1);
 
         //printResult(detaObj.putObject("{\"item\":{\"key\":\"Nombre\",\"Dominadas\":4}}"));
       }

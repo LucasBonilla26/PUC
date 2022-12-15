@@ -1,10 +1,6 @@
 
 #include <Arduino.h>
-#if defined(ESP32)
-  #include <WiFi.h>
-#elif defined(ESP8266)
-  #include <ESP8266WiFi.h>
-#endif
+#include <WiFi.h>
 #include <Firebase_ESP_Client.h>
 
 //Provide the token generation process info.

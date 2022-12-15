@@ -1,3 +1,4 @@
+#include <Firebase_ESP_Client.h>
 #include <WiFi.h>
 #include "HTTPClient.h"
 #include <Wire.h>
@@ -6,8 +7,7 @@
 #include <NfcAdapter.h>
 #include <DFRobotDFPlayerMini.h>
 #include <SoftwareSerial.h>
-//#include <Arduino.h>
-#include <Firebase_ESP_Client.h>
+#include <Arduino.h>
 
 //Provide the token generation process info.
 #include "addons/TokenHelper.h"
@@ -17,6 +17,9 @@
 // Insert your network credentials
 #define WIFI_SSID "realme X3 SuperZoom"
 #define WIFI_PASSWORD "Jotas1234"
+
+//#define WIFI_SSID "WifiLucas"
+//#define WIFI_PASSWORD "pakito4!;*"
 
 // Insert Firebase project API Key
 #define API_KEY "AIzaSyCpHZFLFbC_axgeO2lNnbICakesssqNlVc"
@@ -33,7 +36,7 @@ FirebaseConfig config;
 PN532_I2C pn532i2c(Wire);
 PN532 nfc(pn532i2c);
 
-SoftwareSerial mySoftwareSerial(25, 26); 
+SoftwareSerial mySoftwareSerial(26, 25); 
 DFRobotDFPlayerMini altavoz;
 
 volatile bool connected = false;
@@ -53,8 +56,9 @@ unsigned long prevMillisData = 0;
 unsigned long currentMillisData = 0;
 unsigned long sendDataPrevMillis = 0;
 bool signupOK = false;
-
-
+String uidString = "";
+int resta = 0;
+int result = 0;
 void init_WiFi() {
   WiFi.begin(ssid, password);
   Serial.println("Connecting");
@@ -198,7 +202,7 @@ void NFCdetection()
   uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };
   // UID size (4 or 7 bytes depending on card type)
   uint8_t uidLength;
-  String uidString = "";
+  
   while (!connected) {
     connected = connect();
   }
@@ -247,23 +251,25 @@ void altavozStartup(){
     Serial.println(F("DFRobot DFPlayer Mini Demo"));
     Serial.println(F("Initializing DFPlayer ... (May take 3~5 seconds)"));
   
-    if (!altavoz.begin(mySoftwareSerial)) {  //Use softwareSerial to communicate with mp3.
+    if(!altavoz.begin(mySoftwareSerial)) {  //Use softwareSerial to communicate with mp3.
       Serial.println(F("Unable to begin:"));
       Serial.println(F("1.Please recheck the connection!"));
       Serial.println(F("2.Please insert the SD card!"));
+      
       altavoz.reset();     //Reset the module
       
     }
     Serial.println(F("DFPlayer Mini online."));
   
-    altavoz.volume(30);
+    altavoz.volume(5);
 }
 
 void writeFirebase(int total){
+  String dBase = uidString + "/dominadas";
   if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0)){
     sendDataPrevMillis = millis();
     // Write an Int number on the database path test/int
-    if (Firebase.RTDB.setInt(&fbdo, "test/dominadas", total)){
+    if (Firebase.RTDB.setInt(&fbdo, dBase, total)){
       Serial.println("PASSED");
       Serial.println("PATH: " + fbdo.dataPath());
       Serial.println("TYPE: " + fbdo.dataType());
@@ -276,34 +282,41 @@ void writeFirebase(int total){
 }
 
 void checkNum(){
+      resta = 0;
       get = httpGETRequest(serverName);
       //Serial.print(typeid(get).name());
       //get = bool(get);
-      int result = get.compareTo("0");
+      result = get.compareTo("0");   
       if(result == 0){
         estadoActual = false;
       }
       else{
-        currentMillisData = millis();
-        prevMillisData = currentMillisData;        
+        //currentMillisData = millis();
+        //prevMillisData = currentMillisData;        
         estadoActual = true;
       }
-      if(currentMillisData - prevMillisData >= 30000){
+      resta = currentMillisData - prevMillisData;
+      if((resta) <= 20000){
         currentMillisData = millis();                  
         if (estadoActual == true && estadoActual == estadoAnterior){
+          Serial.print("Resultado de la resta: ");
+          Serial.print(resta);
+          Serial.print(" ");
           contador = contador + 1;
           estadoAnterior = !estadoAnterior;
           Serial.print(contador);
-          Serial.print(" ");        
-          //altavoz.play(1);
+          Serial.print(" ");    
+          prevMillisData = millis();    
+          
         }
         if (estadoActual == false){
           estadoAnterior = true;
-          prevMillisData = currentMillisData;
         }
       }
       else{
         WiFi.disconnect();
+        Serial.print("Va a sonar ahora ");
+        altavoz.play(1);
         init_FirebaseWiFi();  
         writeFirebase(contador);              
       }
@@ -312,7 +325,6 @@ void checkNum(){
 void setup() {
     Serial.begin(115200);
     Serial.print("Initialization begin");
-    //altavozStartup();
 
     Serial.println();    
     //Inicialización wifi
@@ -320,6 +332,11 @@ void setup() {
     Serial.print("Conencted to wifi");
     //Inicialización altavoz
     Serial.print("Test 1 Passed");
+    altavozStartup();
+    altavoz.play(1);
+    delay(300);
+    altavoz.play(2);
+    Serial.begin(115200); 
     //Inicializacion del sensor
     Serial.print("Test 2 Passed");
 }
@@ -330,6 +347,7 @@ void loop() {
       if (detectedTarget == false){
         NFCdetection();
         detectedTarget = true;
+        prevMillisData = millis();
       }
       else{
         checkNum();
