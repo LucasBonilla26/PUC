@@ -7,7 +7,6 @@
 #include <NfcAdapter.h>
 #include <DFRobotDFPlayerMini.h>
 #include <SoftwareSerial.h>
-#include <Arduino.h>
 
 //Provide the token generation process info.
 #include "addons/TokenHelper.h"
@@ -15,11 +14,11 @@
 #include "addons/RTDBHelper.h"
 
 // Insert your network credentials
-#define WIFI_SSID "realme X3 SuperZoom"
-#define WIFI_PASSWORD "Jotas1234"
+//#define WIFI_SSID "realme X3 SuperZoom"
+//#define WIFI_PASSWORD "Jotas1234"
 
-//#define WIFI_SSID "WifiLucas"
-//#define WIFI_PASSWORD "pakito4!;*"
+#define WIFI_SSID "WifiLucas"
+#define WIFI_PASSWORD "pakito4!;*"
 
 // Insert Firebase project API Key
 #define API_KEY "AIzaSyCpHZFLFbC_axgeO2lNnbICakesssqNlVc"
@@ -42,7 +41,7 @@ DFRobotDFPlayerMini altavoz;
 volatile bool connected = false;
 
 
-const char* serverName = "http://192.168.4.1/counter";
+const char* serverName = "http://192.168.1.1/counter";
 const char* ssid = "ESP32Wifi";
 const char* password = "123456789";
 
@@ -59,10 +58,11 @@ bool signupOK = false;
 String uidString = "";
 int resta = 0;
 int result = 0;
+
 void init_WiFi() {
   WiFi.begin(ssid, password);
   Serial.println("Connecting");
-  while(WiFi.waitForConnectResult() != WL_CONNECTED) { 
+  while(WiFi.status() != WL_CONNECTED) { 
     delay(500);
     Serial.print(".");
   }
@@ -202,7 +202,8 @@ void NFCdetection()
   uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };
   // UID size (4 or 7 bytes depending on card type)
   uint8_t uidLength;
-  
+  uidString = "";
+  connected = false;
   while (!connected) {
     connected = connect();
   }
@@ -210,7 +211,7 @@ void NFCdetection()
   // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
   // 'uid' will be populated with the UID, and uidLength will indicate
   // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
-  success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
+  success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength,60000);
 
   // If the card is detected, print the UID
   if (success)
@@ -244,7 +245,6 @@ void reconnect_wifi(){
 }
 */
 
-
 void altavozStartup(){
     mySoftwareSerial.begin(9600);
     Serial.begin(115200); 
@@ -261,7 +261,7 @@ void altavozStartup(){
     }
     Serial.println(F("DFPlayer Mini online."));
   
-    altavoz.volume(5);
+    altavoz.volume(30);
 }
 
 void writeFirebase(int total){
@@ -299,9 +299,6 @@ void checkNum(){
       if((resta) <= 20000){
         currentMillisData = millis();                  
         if (estadoActual == true && estadoActual == estadoAnterior){
-          Serial.print("Resultado de la resta: ");
-          Serial.print(resta);
-          Serial.print(" ");
           contador = contador + 1;
           estadoAnterior = !estadoAnterior;
           Serial.print(contador);
@@ -316,9 +313,13 @@ void checkNum(){
       else{
         WiFi.disconnect();
         Serial.print("Va a sonar ahora ");
-        altavoz.play(1);
         init_FirebaseWiFi();  
-        writeFirebase(contador);              
+        writeFirebase(contador);
+        
+        altavoz.play(33);
+        detectedTarget = false;
+        WiFi.disconnect();
+        init_WiFi();
       }
 }
 
@@ -333,9 +334,7 @@ void setup() {
     //Inicialización altavoz
     Serial.print("Test 1 Passed");
     altavozStartup();
-    altavoz.play(1);
     delay(300);
-    altavoz.play(2);
     Serial.begin(115200); 
     //Inicializacion del sensor
     Serial.print("Test 2 Passed");
@@ -347,6 +346,8 @@ void loop() {
       if (detectedTarget == false){
         NFCdetection();
         detectedTarget = true;
+        contador = 0;
+        //altavoz.play(32);
         prevMillisData = millis();
       }
       else{
