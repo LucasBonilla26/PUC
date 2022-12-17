@@ -7,7 +7,7 @@
 #include <NfcAdapter.h>
 #include <DFRobotDFPlayerMini.h>
 #include <SoftwareSerial.h>
-
+#include <Time.h>
 //Provide the token generation process info.
 #include "addons/TokenHelper.h"
 //Provide the RTDB payload printing info and other helper functions.
@@ -59,6 +59,8 @@ int resta = 0;
 int result = 0;
 String wifiSSID = " ";
 String wifiPASS = " ";
+String fecha = " ";
+struct tm timeinfo;
 
 void init_WiFi() {
   WiFi.begin(ssid, password);
@@ -236,19 +238,6 @@ void NFCdetection()
     delay(1000);
   }
 }
-/*
-void reconnect_wifi(){
-    unsigned long currentMillis = millis();
-    // if WiFi is down, try reconnecting
-    if ((WiFi.status() != WL_CONNECTED) && (currentMillis - previousMillis >=interval)) {
-      Serial.print(millis());
-      Serial.println("Reconnecting to WiFi...");
-      WiFi.disconnect();
-      WiFi.reconnect();
-      previousMillis = currentMillis;
-    }
-}
-*/
 
 void altavozStartup(){
     mySoftwareSerial.begin(9600);
@@ -270,7 +259,7 @@ void altavozStartup(){
 }
 
 void writeFirebase(int total){
-  String dBase = uidString + "/dominadas";
+  String dBase = uidString + fecha + "/dominadas";
   if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0)){
     sendDataPrevMillis = millis();
     // Write an Int number on the database path test/int
@@ -295,8 +284,7 @@ void checkNum(){
         estadoActual = false;
       }
       else{
-        //currentMillisData = millis();
-        //prevMillisData = currentMillisData;        
+             
         estadoActual = true;
       }
       resta = currentMillisData - prevMillisData;
@@ -316,7 +304,9 @@ void checkNum(){
       }
       else{
         WiFi.disconnect();
-        init_FirebaseWiFi();  
+        init_FirebaseWiFi();
+        initTime("CET-1CEST,M3.5.0,M10.5.0/3");   // Set for Madrid/AU
+        printLocalTime();
         writeFirebase(contador);
         
         altavoz.play(33);
@@ -326,21 +316,41 @@ void checkNum(){
       }
 }
 
-/*void select_WiFi(){
+void setTimezone(String timezone){
+  Serial.printf("  Setting Timezone to %s\n",timezone.c_str());
+  setenv("TZ",timezone.c_str(),1);  //  Now adjust the TZ.  Clock settings are adjusted to show the new local time
+  tzset();
+}
+void initTime(String timezone){
 
-    httpGETRequest(serverSSID).toCharArray(WIFI_SSID, 50);
-    httpGETRequest(serverPass).toCharArray(WIFI_PASSWORD, 50);
+  Serial.println("Setting up time");
+  configTime(0, 0, "pool.ntp.org");    // First connect to NTP server, with 0 TZ offset
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("  Failed to obtain time");
+    return;
+  }
+  Serial.println("  Got the time from NTP");
+  // Now we can set the real timezone
+  setTimezone(timezone);
+}
+void printLocalTime(){
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time 1");
+    return;
+  }
+  fecha = "/"+(String)timeinfo.tm_mday+"_"+(String)(timeinfo.tm_mon+1)+"_" +(String)(timeinfo.tm_year-100)+"_" +(String)timeinfo.tm_hour +"_" + (String)timeinfo.tm_min +"_" + (String)timeinfo.tm_sec; 
 
-}*/
+}
 
 void setup() {
     Serial.begin(115200);
     Serial.print("Initialization begin");
     //select_WiFi();
-    Serial.println();    
+    Serial.println();
+    
     //Inicialización wifi
     init_WiFi();
-    Serial.print("Conencted to wifi");
+    Serial.print("Connected to wifi");
     wifiSSID = httpGETRequest(serverSSID);
     wifiPASS = httpGETRequest(serverPass);
     Serial.print(wifiSSID);
@@ -363,13 +373,10 @@ void loop() {
         contador = 0;
         //altavoz.play(32);
         prevMillisData = millis();
+      
       }
       else{
         checkNum();
-    }
-    }
- 
-    //Muestra en pantalla el valor de la distancia obtenida por el sensor
-
-    //wifi_scanner();
+    } 
+  }
 }
