@@ -17,9 +17,6 @@
 //#define WIFI_SSID "realme X3 SuperZoom"
 //#define WIFI_PASSWORD "Jotas1234"
 
-#define WIFI_SSID "WifiLucas"
-#define WIFI_PASSWORD "pakito4!;*"
-
 // Insert Firebase project API Key
 #define API_KEY "AIzaSyCpHZFLFbC_axgeO2lNnbICakesssqNlVc"
 
@@ -42,6 +39,8 @@ volatile bool connected = false;
 
 
 const char* serverName = "http://192.168.1.1/counter";
+const char* serverSSID = "http://192.168.1.1/ssid";
+const char* serverPass = "http://192.168.1.1/password";
 const char* ssid = "ESP32Wifi";
 const char* password = "123456789";
 
@@ -58,6 +57,8 @@ bool signupOK = false;
 String uidString = "";
 int resta = 0;
 int result = 0;
+String wifiSSID = " ";
+String wifiPASS = " ";
 
 void init_WiFi() {
   WiFi.begin(ssid, password);
@@ -73,6 +74,10 @@ void init_WiFi() {
 
 void init_FirebaseWiFi(){
   Serial.begin(115200);
+  const char* WIFI_SSID = wifiSSID.c_str();
+  const char* WIFI_PASSWORD = wifiPASS.c_str();
+  Serial.print(WIFI_SSID);
+  Serial.print(WIFI_PASSWORD);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to Wi-Fi");
   while (WiFi.status() != WL_CONNECTED){
@@ -284,8 +289,7 @@ void writeFirebase(int total){
 void checkNum(){
       resta = 0;
       get = httpGETRequest(serverName);
-      //Serial.print(typeid(get).name());
-      //get = bool(get);
+      
       result = get.compareTo("0");   
       if(result == 0){
         estadoActual = false;
@@ -312,7 +316,6 @@ void checkNum(){
       }
       else{
         WiFi.disconnect();
-        Serial.print("Va a sonar ahora ");
         init_FirebaseWiFi();  
         writeFirebase(contador);
         
@@ -323,14 +326,25 @@ void checkNum(){
       }
 }
 
+/*void select_WiFi(){
+
+    httpGETRequest(serverSSID).toCharArray(WIFI_SSID, 50);
+    httpGETRequest(serverPass).toCharArray(WIFI_PASSWORD, 50);
+
+}*/
+
 void setup() {
     Serial.begin(115200);
     Serial.print("Initialization begin");
-
+    //select_WiFi();
     Serial.println();    
     //Inicialización wifi
     init_WiFi();
     Serial.print("Conencted to wifi");
+    wifiSSID = httpGETRequest(serverSSID);
+    wifiPASS = httpGETRequest(serverPass);
+    Serial.print(wifiSSID);
+    Serial.print(wifiPASS);
     //Inicialización altavoz
     Serial.print("Test 1 Passed");
     altavozStartup();
